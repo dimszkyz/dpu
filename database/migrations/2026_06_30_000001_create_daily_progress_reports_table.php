@@ -16,6 +16,8 @@ return new class extends Migration
             $table->text('progres')->nullable();
             $table->text('kendala')->nullable();
             $table->text('rencana_lanjut')->nullable();
+            $table->string('file_path')->nullable();
+            $table->string('file_name')->nullable();
             $table->timestamps();
 
             $table->unique(['id_penugasan', 'id_user', 'tanggal_laporan'], 'daily_progress_unique');
