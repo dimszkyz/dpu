@@ -36,28 +36,32 @@ class PenugasanController extends Controller
     {
         $tugas = Tugas::all();
         $users = User::where('role', 'user')->get();
-
         return view('admin.tambahpenugasan', compact('tugas', 'users'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'kodetugas' => 'required|exists:tugas,kodetugas',
             'batas_waktu_lapor' => 'required|date',
             'anggota' => 'required|array|min:1',
             'anggota.*.id_user' => 'required|exists:users,nip',
-        ]);
+        ], $this->deadlineValidationMessages());
+
+        $tugas = Tugas::where('kodetugas', $validated['kodetugas'])->firstOrFail();
+        if (!$this->isDeadlineValidForTask($validated['batas_waktu_lapor'], $tugas)) {
+            return back()->withInput()->with('error', 'Batas waktu lapor tidak boleh kurang dari tanggal selesai tugas. Batas waktu lapor boleh sama dengan tanggal selesai.');
+        }
 
         DB::beginTransaction();
         try {
             $penugasan = Penugasan::create([
-                'kodetugas' => $request->kodetugas,
+                'kodetugas' => $validated['kodetugas'],
                 'id_admin' => Auth::id(),
-                'batas_waktu_lapor' => $request->batas_waktu_lapor,
+                'batas_waktu_lapor' => $validated['batas_waktu_lapor'],
             ]);
 
-            foreach ($request->anggota as $item) {
+            foreach ($validated['anggota'] as $item) {
                 AnggotaPenugasan::create([
                     'id_penugasan' => $penugasan->id,
                     'id_user' => $item['id_user'],
@@ -68,30 +72,23 @@ class PenugasanController extends Controller
             return redirect()->route('admin.penugasan.index')->with('success', 'Penugasan berhasil dibuat!');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
     public function checkExisting($kodetugas)
     {
         $penugasan = Penugasan::with(['anggota.user'])->where('kodetugas', $kodetugas)->first();
-
-        if ($penugasan) {
-            return response()->json(['exists' => true, 'data' => $penugasan]);
-        }
-
-        return response()->json(['exists' => false]);
+        return response()->json(['exists' => (bool) $penugasan, 'data' => $penugasan]);
     }
 
     public function show($id)
     {
         $penugasan = Penugasan::with(['tugas', 'admin', 'anggota.user', 'laporan'])->findOrFail($id);
 
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'superadmin') {
+        if (!in_array(Auth::user()->role, ['admin', 'superadmin'])) {
             $isMember = $penugasan->anggota->contains('id_user', Auth::id());
-            if (!$isMember) {
-                abort(403, 'Anda tidak memiliki akses ke detail penugasan ini.');
-            }
+            if (!$isMember) abort(403, 'Anda tidak memiliki akses ke detail penugasan ini.');
         }
 
         return view('detailpenugasanuser', compact('penugasan'));
@@ -101,7 +98,6 @@ class PenugasanController extends Controller
     {
         $penugasan = Penugasan::with(['tugas', 'admin', 'anggota.user'])->findOrFail($id);
         $extensionRequests = $penugasan->anggota->where('status_keterlambatan', 'mengajukan')->values();
-
         return view('admin.detailpenugasan', compact('penugasan', 'extensionRequests'));
     }
 
@@ -126,27 +122,28 @@ class PenugasanController extends Controller
         $penugasan = Penugasan::with('anggota')->findOrFail($id);
         $tugas = Tugas::all();
         $users = User::where('role', 'user')->get();
-
         return view('admin.tambahpenugasan', compact('penugasan', 'tugas', 'users'));
     }
 
     public function update(Request $request, $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'batas_waktu_lapor' => 'required|date',
             'anggota' => 'required|array|min:1',
             'anggota.*.id_user' => 'required|exists:users,nip',
-        ]);
+        ], $this->deadlineValidationMessages());
+
+        $penugasan = Penugasan::with('tugas')->findOrFail($id);
+        if (!$this->isDeadlineValidForTask($validated['batas_waktu_lapor'], $penugasan->tugas)) {
+            return back()->withInput()->with('error', 'Batas waktu lapor tidak boleh kurang dari tanggal selesai tugas. Batas waktu lapor boleh sama dengan tanggal selesai.');
+        }
 
         DB::beginTransaction();
         try {
-            $penugasan = Penugasan::findOrFail($id);
-            $penugasan->update([
-                'batas_waktu_lapor' => $request->batas_waktu_lapor,
-            ]);
+            $penugasan->update(['batas_waktu_lapor' => $validated['batas_waktu_lapor']]);
 
             AnggotaPenugasan::where('id_penugasan', $id)->delete();
-            foreach ($request->anggota as $item) {
+            foreach ($validated['anggota'] as $item) {
                 AnggotaPenugasan::create([
                     'id_penugasan' => $id,
                     'id_user' => $item['id_user'],
@@ -157,24 +154,23 @@ class PenugasanController extends Controller
             return redirect()->route('admin.penugasan.index')->with('success', 'Penugasan berhasil diperbarui!');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
     public function updateDeadline(Request $request, $id)
     {
         $validated = $request->validate([
-            'batas_waktu_lapor' => 'required|date|after:now',
+            'batas_waktu_lapor' => 'required|date',
             'catatan_admin' => 'nullable|string|max:1000',
-        ], [
-            'batas_waktu_lapor.required' => 'Batas waktu baru wajib diisi.',
-            'batas_waktu_lapor.after' => 'Batas waktu baru harus setelah waktu saat ini.',
-        ]);
+        ], $this->deadlineValidationMessages());
 
-        $penugasan = Penugasan::with('anggota')->findOrFail($id);
-        $penugasan->update([
-            'batas_waktu_lapor' => $validated['batas_waktu_lapor'],
-        ]);
+        $penugasan = Penugasan::with(['tugas', 'anggota'])->findOrFail($id);
+        if (!$this->isDeadlineValidForTask($validated['batas_waktu_lapor'], $penugasan->tugas)) {
+            return back()->withInput()->with('error', 'Batas waktu baru tidak boleh kurang dari tanggal selesai tugas.');
+        }
+
+        $penugasan->update(['batas_waktu_lapor' => $validated['batas_waktu_lapor']]);
 
         AnggotaPenugasan::where('id_penugasan', $penugasan->id)
             ->where('status_keterlambatan', 'mengajukan')
@@ -190,7 +186,6 @@ class PenugasanController extends Controller
     {
         $penugasan = Penugasan::findOrFail($id);
         $penugasan->delete();
-
         return redirect()->route('admin.penugasan.index')->with('success', 'Penugasan berhasil dihapus!');
     }
 
@@ -206,7 +201,6 @@ class PenugasanController extends Controller
         $sheetTemplate->setCellValue('B2', \Carbon\Carbon::now()->addDays(7)->format('Y-m-d'));
         $sheetTemplate->setCellValue('C2', '199001012024011001, 199001012024011002');
         $sheetTemplate->getStyle('A1:C1')->getFont()->setBold(true);
-        $sheetTemplate->getStyle('A1:C1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFF0F0F0');
 
         foreach (range('A', 'C') as $columnID) {
             $sheetTemplate->getColumnDimension($columnID)->setAutoSize(true);
@@ -216,20 +210,15 @@ class PenugasanController extends Controller
         $sheetTugas->setTitle('Daftar Tugas');
         $sheetTugas->setCellValue('A1', 'Kode Tugas');
         $sheetTugas->setCellValue('B1', 'Nama Tugas');
-        $sheetTugas->setCellValue('C1', 'Deskripsi');
+        $sheetTugas->setCellValue('C1', 'Tanggal Selesai');
         $sheetTugas->getStyle('A1:C1')->getFont()->setBold(true);
-        $sheetTugas->getStyle('A1:C1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFE0E0E0');
 
         $rowTugas = 2;
         foreach (Tugas::all() as $tugas) {
             $sheetTugas->setCellValue('A' . $rowTugas, $tugas->kodetugas);
             $sheetTugas->setCellValue('B' . $rowTugas, $tugas->nama_tugas);
-            $sheetTugas->setCellValue('C' . $rowTugas, $tugas->deskripsi);
+            $sheetTugas->setCellValue('C' . $rowTugas, $tugas->tanggal_selesai);
             $rowTugas++;
-        }
-
-        foreach (range('A', 'C') as $columnID) {
-            $sheetTugas->getColumnDimension($columnID)->setAutoSize(true);
         }
 
         $sheetUser = $spreadsheet->createSheet();
@@ -238,7 +227,6 @@ class PenugasanController extends Controller
         $sheetUser->setCellValue('B1', 'Nama');
         $sheetUser->setCellValue('C1', 'Email');
         $sheetUser->getStyle('A1:C1')->getFont()->setBold(true);
-        $sheetUser->getStyle('A1:C1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFE0E0E0');
 
         $rowUser = 2;
         foreach (User::all() as $user) {
@@ -248,23 +236,70 @@ class PenugasanController extends Controller
             $rowUser++;
         }
 
-        foreach (range('A', 'C') as $columnID) {
-            $sheetUser->getColumnDimension($columnID)->setAutoSize(true);
-        }
-
         $spreadsheet->setActiveSheetIndex(0);
         $writer = new Xlsx($spreadsheet);
         $filename = 'Template_Import_Penugasan_Lengkap.xlsx';
 
-        if (ob_get_length()) {
-            ob_end_clean();
-        }
+        if (ob_get_length()) ob_end_clean();
 
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
         $writer->save('php://output');
         exit;
+    }
+
+    public function importProcess(Request $request)
+    {
+        $penugasanData = $request->input('penugasan');
+
+        if (!$penugasanData) {
+            return redirect()->route('admin.penugasan.index')->with('error', 'Tidak ada data yang diproses.');
+        }
+
+        foreach ($penugasanData as $index => $row) {
+            if (empty($row['kodetugas'])) continue;
+
+            $tugas = Tugas::where('kodetugas', $row['kodetugas'])->first();
+            $batasWaktuLapor = $this->formatTanggalMySQL($row['batas_waktu_lapor'] ?? null);
+            $nomorBaris = $index + 1;
+
+            if (!$tugas) {
+                return redirect()->route('admin.penugasan.index')->with('error', "Import penugasan baris {$nomorBaris} gagal: kode tugas tidak ditemukan.");
+            }
+
+            if (!$batasWaktuLapor || !$this->isDeadlineValidForTask($batasWaktuLapor, $tugas)) {
+                return redirect()->route('admin.penugasan.index')->with('error', "Import penugasan baris {$nomorBaris} gagal: batas waktu lapor tidak boleh kurang dari tanggal selesai tugas.");
+            }
+
+            $penugasan = Penugasan::create([
+                'kodetugas' => $row['kodetugas'],
+                'batas_waktu_lapor' => $batasWaktuLapor,
+                'id_admin' => Auth::user()->nip,
+            ]);
+
+            if (!empty($row['nip_anggota'])) {
+                foreach (explode(',', $row['nip_anggota']) as $nip) {
+                    $nipBersih = trim($nip);
+                    if (!empty($nipBersih)) {
+                        AnggotaPenugasan::create([
+                            'id_penugasan' => $penugasan->id,
+                            'id_user' => $nipBersih,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return redirect()->route('admin.penugasan.index')->with('success', 'Data penugasan dan anggota berhasil diimport!');
+    }
+
+    private function isDeadlineValidForTask($deadline, ?Tugas $tugas): bool
+    {
+        if (!$tugas || !$tugas->tanggal_selesai || !$deadline) return false;
+
+        return \Carbon\Carbon::parse($deadline)->startOfDay()
+            ->greaterThanOrEqualTo(\Carbon\Carbon::parse($tugas->tanggal_selesai)->startOfDay());
     }
 
     private function formatTanggalMySQL($tanggal)
@@ -297,38 +332,12 @@ class PenugasanController extends Controller
         }
     }
 
-    public function importProcess(Request $request)
+    private function deadlineValidationMessages(): array
     {
-        $penugasanData = $request->input('penugasan');
-
-        if (!$penugasanData) {
-            return redirect()->route('admin.penugasan.index')->with('error', 'Tidak ada data yang diproses.');
-        }
-
-        foreach ($penugasanData as $row) {
-            if (empty($row['kodetugas'])) continue;
-
-            $batasWaktuLapor = $this->formatTanggalMySQL($row['batas_waktu_lapor']);
-
-            $penugasan = Penugasan::create([
-                'kodetugas' => $row['kodetugas'],
-                'batas_waktu_lapor' => $batasWaktuLapor,
-                'id_admin' => Auth::user()->nip,
-            ]);
-
-            if (!empty($row['nip_anggota'])) {
-                foreach (explode(',', $row['nip_anggota']) as $nip) {
-                    $nipBersih = trim($nip);
-                    if (!empty($nipBersih)) {
-                        AnggotaPenugasan::create([
-                            'id_penugasan' => $penugasan->id,
-                            'id_user' => $nipBersih,
-                        ]);
-                    }
-                }
-            }
-        }
-
-        return redirect()->route('admin.penugasan.index')->with('success', 'Data Penugasan dan Anggota berhasil diimport!');
+        return [
+            'batas_waktu_lapor.required' => 'Batas waktu lapor wajib diisi.',
+            'batas_waktu_lapor.date' => 'Batas waktu lapor harus berupa tanggal yang valid.',
+            'anggota.required' => 'Minimal satu anggota wajib dipilih.',
+        ];
     }
 }
