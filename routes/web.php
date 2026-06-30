@@ -1,8 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\TugasController;
 use App\Http\Controllers\PenugasanController;
 use App\Http\Controllers\LaporanController;
@@ -13,9 +14,17 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class, 'login']);
-Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [LoginController::class, 'login']);
+
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [ResetPasswordController::class, 'store'])->name('password.update');
+});
+
+Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');
 
 Route::middleware(['auth'])->group(function () {
 
@@ -44,7 +53,7 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{nip}', [UserController::class, 'update'])->name('update');
             Route::delete('/{nip}', [UserController::class, 'destroy'])->name('destroy');
         });
-        
+
         Route::prefix('tugas')->name('tugas.')->group(function () {
             Route::get('/', [TugasController::class, 'index'])->name('index');
             Route::get('/template', [TugasController::class, 'template'])->name('template');
@@ -76,6 +85,5 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/laporan/detail/{id}', [LaporanController::class, 'showAdmin'])->name('laporan.show');
         Route::put('/laporan/{id}/status', [LaporanController::class, 'updateStatus'])->name('laporan.updateStatus');
         Route::post('/laporan/chat', [LaporanController::class, 'storeChat'])->name('laporan.chat.store');
-        
     });
 });
