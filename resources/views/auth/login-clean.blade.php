@@ -22,15 +22,12 @@
                 <div class="absolute top-0 right-0 w-80 h-80 bg-gradient-to-tr from-blue-500/5 to-indigo-500/5 rounded-full blur-3xl"></div>
                 <div class="relative space-y-8 z-10">
                     <div class="flex items-center gap-3">
-                        <div class="bg-slate-900 p-3 rounded-2xl shadow-sm shadow-slate-900/10">
-                            <span class="text-yellow-400 text-xl font-black">⚡</span>
-                        </div>
+                        <div class="bg-slate-900 p-3 rounded-2xl shadow-sm shadow-slate-900/10"><span class="text-yellow-400 text-xl font-black">⚡</span></div>
                         <div class="flex flex-col">
                             <span class="text-2xl font-black tracking-wider text-slate-900">POINT<span class="text-blue-600">IFY</span></span>
                             <span class="text-[10px] font-bold text-slate-400 tracking-widest uppercase leading-none mt-0.5">Sistem Penugasan</span>
                         </div>
                     </div>
-
                     <div class="space-y-4 max-w-xl">
                         <div class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Konsol Utama Agen</div>
                         <h1 class="text-4xl xl:text-5xl font-black text-slate-900 tracking-tight leading-tight">Masuk ke Sistem Informasi Penugasan DPU.</h1>
@@ -56,14 +53,6 @@
                         <p class="text-xs font-medium text-slate-500 leading-relaxed">Gunakan email dan kata sandi yang telah terdaftar pada sistem.</p>
                     </div>
 
-                    @if (session('status'))
-                        <div class="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-sm font-semibold text-emerald-700">{{ session('status') }}</div>
-                    @endif
-
-                    @if ($errors->any())
-                        <div class="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-sm font-semibold text-red-700">{{ $errors->first() }}</div>
-                    @endif
-
                     <form action="{{ url('login') }}" method="POST" class="space-y-5">
                         @csrf
                         <div class="space-y-2">
@@ -77,23 +66,19 @@
                         </div>
 
                         <div class="flex items-center justify-between">
-                            <label for="remember_me" class="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
-                                <input id="remember_me" name="remember" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer">
-                                Ingat saya
-                            </label>
+                            <label for="remember_me" class="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer"><input id="remember_me" name="remember" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer">Ingat saya</label>
                             <a href="{{ route('password.request') }}" class="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline">Lupa kata sandi?</a>
                         </div>
 
                         <button type="submit" class="w-full flex justify-center py-3 px-4 rounded-xl shadow-md shadow-blue-500/10 text-sm font-black text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 hover:-translate-y-0.5 uppercase tracking-wider">Masuk Sekarang</button>
                     </form>
 
-                    <div class="mt-8 pt-6 border-t border-slate-100 text-center">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">&copy; {{ date('Y') }} POINTIFY. Sistem Penugasan DPU.</p>
-                    </div>
+                    <div class="mt-8 pt-6 border-t border-slate-100 text-center"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">&copy; {{ date('Y') }} POINTIFY. Sistem Penugasan DPU.</p></div>
                 </div>
             </section>
         </div>
     </main>
     <style>@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.animate-slide-up{animation:slideUp .45s ease-out both}</style>
+    @include('partials.sweet-alert')
 </body>
 </html>
