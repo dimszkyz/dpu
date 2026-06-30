@@ -189,6 +189,47 @@ class PenugasanController extends Controller
         return redirect()->route('admin.penugasan.index')->with('success', 'Penugasan berhasil dihapus!');
     }
 
+    public function export()
+    {
+        $penugasan = Penugasan::with(['tugas', 'admin', 'anggota.user'])->orderBy('created_at', 'desc')->get();
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Data Penugasan');
+
+        $headers = ['ID', 'Kode Tugas', 'Nama Tugas', 'Admin', 'Anggota', 'Batas Waktu Lapor', 'Tanggal Dibuat'];
+        foreach ($headers as $index => $header) {
+            $sheet->setCellValue(chr(65 + $index) . '1', $header);
+        }
+
+        $row = 2;
+        foreach ($penugasan as $item) {
+            $anggota = $item->anggota->map(fn ($a) => ($a->user->name ?? $a->id_user) . ' (' . $a->id_user . ')')->implode(', ');
+            $sheet->setCellValue('A' . $row, $item->id);
+            $sheet->setCellValue('B' . $row, $item->kodetugas);
+            $sheet->setCellValue('C' . $row, $item->tugas->nama_tugas ?? '-');
+            $sheet->setCellValue('D' . $row, $item->admin->name ?? $item->id_admin);
+            $sheet->setCellValue('E' . $row, $anggota);
+            $sheet->setCellValue('F' . $row, $item->batas_waktu_lapor);
+            $sheet->setCellValue('G' . $row, $item->created_at);
+            $row++;
+        }
+
+        foreach (range('A', 'G') as $columnID) {
+            $sheet->getColumnDimension($columnID)->setAutoSize(true);
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $filename = 'Data_Penugasan_' . date('Y-m-d') . '.xlsx';
+
+        if (ob_get_length()) ob_end_clean();
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        $writer->save('php://output');
+        exit;
+    }
+
     public function template()
     {
         $spreadsheet = new Spreadsheet();
