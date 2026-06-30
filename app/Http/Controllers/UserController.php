@@ -76,7 +76,7 @@ class UserController extends Controller
      */
     public function create()
     {
-        return view('admin.formuser');
+        return view('admin.formuser-clean');
     }
 
     /**
@@ -86,7 +86,7 @@ class UserController extends Controller
     {
         $user = User::where('nip', $nip)->firstOrFail();
 
-        return view('admin.formuser', compact('user'));
+        return view('admin.formuser-clean', compact('user'));
     }
 
     /**
