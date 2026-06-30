@@ -26,14 +26,6 @@
                     <p class="text-xs font-medium text-slate-500">Masukkan email akun Anda untuk menerima tautan pemulihan.</p>
                 </div>
 
-                @if (session('status'))
-                    <div class="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-sm font-semibold text-emerald-700">{{ session('status') }}</div>
-                @endif
-
-                @if ($errors->any())
-                    <div class="p-4 bg-red-50 border border-red-100 rounded-2xl text-sm font-semibold text-red-700">{{ $errors->first() }}</div>
-                @endif
-
                 <form action="{{ route('password.email') }}" method="POST" class="space-y-5">
                     @csrf
                     <input name="email" type="email" value="{{ old('email') }}" required autofocus class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 text-sm font-medium text-slate-800 placeholder-slate-400 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none" placeholder="nama@email.com">
@@ -46,5 +38,6 @@
             </div>
         </section>
     </main>
+    @include('partials.sweet-alert')
 </body>
 </html>
