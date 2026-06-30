@@ -26,10 +26,6 @@
                     <p class="text-xs font-medium text-slate-500">Buat kata sandi baru untuk akun Anda.</p>
                 </div>
 
-                @if ($errors->any())
-                    <div class="p-4 bg-red-50 border border-red-100 rounded-2xl text-sm font-semibold text-red-700">{{ $errors->first() }}</div>
-                @endif
-
                 <form action="{{ route('password.update') }}" method="POST" class="space-y-5">
                     @csrf
                     <input type="hidden" name="token" value="{{ $token }}">
@@ -41,5 +37,6 @@
             </div>
         </section>
     </main>
+    @include('partials.sweet-alert')
 </body>
 </html>
