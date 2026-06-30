@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -29,7 +30,6 @@ class UserController extends Controller
 
         return view('admin.managementuser', compact('users'));
     }
-
 
     /**
      * Menyimpan data pengguna baru ke database.
@@ -55,7 +55,7 @@ class UserController extends Controller
                 'nip'      => $request->nip,
                 'name'     => $request->name,
                 'email'    => $request->email,
-                'password' => Hash::make($request->password), // Password wajib di-hash
+                'password' => Hash::make($request->password),
                 'role'     => $request->role,
             ]);
 
@@ -68,21 +68,21 @@ class UserController extends Controller
     }
 
     /**
-     * Menampilkan form tambah pengguna baru (Mode Tambah User).
+     * Menampilkan form tambah pengguna baru.
      */
     public function create()
     {
-        return view('admin.formuser'); // Menggunakan view gabungan
+        return view('admin.formuser');
     }
 
     /**
-     * Menampilkan form edit untuk pengguna tertentu (Mode Edit Pengguna).
+     * Menampilkan form edit untuk pengguna tertentu.
      */
     public function edit($nip)
     {
         $user = User::where('nip', $nip)->firstOrFail();
-        
-        return view('admin.formuser', compact('user')); // Mengirim data user ke view gabungan
+
+        return view('admin.formuser', compact('user'));
     }
 
     /**
@@ -93,12 +93,26 @@ class UserController extends Controller
         $user = User::where('nip', $nip)->firstOrFail();
 
         $request->validate([
-            'nip'      => ['required', 'numeric', Rule::unique('users')->ignore($user->id)],
-            'name'     => 'required|string|max:255',
-            'email'    => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role'     => 'required|in:superadmin,admin,user',
-            // Password tidak required saat update, hanya jika diisi saja
-            'password' => 'nullable|string|min:6|confirmed', 
+            'nip' => [
+                'required',
+                'numeric',
+                Rule::unique('users', 'nip')->ignore($user->nip, 'nip'),
+            ],
+            'name' => 'required|string|max:255',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->nip, 'nip'),
+            ],
+            'role' => 'required|in:superadmin,admin,user',
+            'password' => 'nullable|string|min:6|confirmed',
+        ], [
+            'nip.unique' => 'NIP ini sudah terdaftar di sistem.',
+            'email.unique' => 'Email ini sudah digunakan.',
+            'password.min' => 'Password minimal harus 6 karakter.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
         ]);
 
         DB::beginTransaction();
@@ -110,7 +124,6 @@ class UserController extends Controller
                 'role'  => $request->role,
             ];
 
-            // Jika user mengisi kolom password, maka perbarui password-nya
             if ($request->filled('password')) {
                 $updateData['password'] = Hash::make($request->password);
             }
@@ -128,15 +141,11 @@ class UserController extends Controller
     /**
      * Menghapus data pengguna dari database.
      */
-    /**
-     * Menghapus data pengguna dari database.
-     */
     public function destroy($nip)
     {
         $user = User::where('nip', $nip)->firstOrFail();
 
-        // PERBAIKAN: Mencegah user menghapus akunnya sendiri dengan mencocokkan ID secara langsung
-        if (\Illuminate\Support\Facades\Auth::id() == $user->id) {
+        if (Auth::id() === $user->nip) {
             return redirect()->route('admin.user.index')->with('error', 'Anda tidak dapat menghapus akun yang sedang Anda gunakan.');
         }
 
