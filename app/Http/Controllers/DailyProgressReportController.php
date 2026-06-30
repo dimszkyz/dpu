@@ -11,6 +11,61 @@ use Illuminate\Support\Facades\Auth;
 
 class DailyProgressReportController extends Controller
 {
+    public function show($id)
+    {
+        $penugasan = Penugasan::with([
+            'tugas',
+            'admin',
+            'anggota.user',
+            'laporan',
+            'dailyProgressReports' => function ($query) {
+                $query->where('id_user', Auth::id())->orderBy('tanggal_laporan');
+            },
+        ])->findOrFail($id);
+
+        $this->authorizeUserAccess($penugasan);
+
+        $startDate = Carbon::parse($penugasan->tugas->tanggal_mulai ?? $penugasan->created_at)->startOfDay();
+        $endDate = Carbon::parse($penugasan->tugas->tanggal_selesai ?? $penugasan->batas_waktu_lapor)->startOfDay();
+        $today = now()->startOfDay();
+        $reportsByDate = $penugasan->dailyProgressReports->keyBy(fn ($report) => $report->tanggal_laporan->toDateString());
+        $calendarDays = collect();
+        $firstMissingDate = null;
+
+        foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+            $dateKey = $date->toDateString();
+            $report = $reportsByDate->get($dateKey);
+            $isFuture = $date->greaterThan($today);
+            $status = $report ? 'sudah_lapor' : ($isFuture ? 'menunggu' : 'belum_lapor');
+
+            if (!$firstMissingDate && $status === 'belum_lapor') {
+                $firstMissingDate = $dateKey;
+            }
+
+            $calendarDays->push([
+                'date' => $date->copy(),
+                'date_key' => $dateKey,
+                'status' => $status,
+                'report' => $report,
+            ]);
+        }
+
+        $selectedDate = old('tanggal_laporan', $firstMissingDate ?? min($today->toDateString(), $endDate->toDateString()));
+        $todayReport = $reportsByDate->get(now()->toDateString());
+        $missingCount = $calendarDays->where('status', 'belum_lapor')->count();
+
+        return view('detailpenugasanuser-progress', compact(
+            'penugasan',
+            'calendarDays',
+            'reportsByDate',
+            'selectedDate',
+            'todayReport',
+            'missingCount',
+            'startDate',
+            'endDate'
+        ));
+    }
+
     public function store(Request $request, $id_penugasan)
     {
         $penugasan = Penugasan::with('tugas')->findOrFail($id_penugasan);
