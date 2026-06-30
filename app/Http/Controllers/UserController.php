@@ -18,14 +18,13 @@ class UserController extends Controller
     {
         $query = User::query();
 
-        // Fitur pencarian berdasarkan NIP atau Nama
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('nip', 'like', "%{$search}%");
+                  ->orWhere('nip', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
         }
 
-        // Ambil data terbaru (bisa diubah menjadi paginate() jika data sangat banyak)
         $users = $query->orderBy('created_at', 'desc')->get();
 
         return view('admin.managementuser', compact('users'));
@@ -36,27 +35,32 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'nip'      => 'required|unique:users,nip|numeric',
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            'role'     => 'required|in:superadmin,admin,user',
+        $validated = $request->validate([
+            'nip' => ['required', 'string', 'max:20', 'unique:users,nip'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'role' => ['nullable', 'in:superadmin,admin,user'],
         ], [
+            'nip.required' => 'NIP wajib diisi.',
             'nip.unique' => 'NIP ini sudah terdaftar di sistem.',
+            'nip.max' => 'NIP maksimal 20 karakter.',
+            'email.required' => 'Email wajib diisi.',
             'email.unique' => 'Email ini sudah digunakan.',
+            'password.required' => 'Password wajib diisi.',
             'password.min' => 'Password minimal harus 6 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
+            'role.in' => 'Role tidak valid.',
         ]);
 
         DB::beginTransaction();
         try {
             User::create([
-                'nip'      => $request->nip,
-                'name'     => $request->name,
-                'email'    => $request->email,
-                'password' => Hash::make($request->password),
-                'role'     => $request->role,
+                'nip' => trim($validated['nip']),
+                'name' => $validated['name'],
+                'email' => strtolower($validated['email']),
+                'password' => Hash::make($validated['password']),
+                'role' => $validated['role'] ?? 'user',
             ]);
 
             DB::commit();
@@ -92,13 +96,14 @@ class UserController extends Controller
     {
         $user = User::where('nip', $nip)->firstOrFail();
 
-        $request->validate([
+        $validated = $request->validate([
             'nip' => [
                 'required',
-                'numeric',
+                'string',
+                'max:20',
                 Rule::unique('users', 'nip')->ignore($user->nip, 'nip'),
             ],
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
@@ -106,10 +111,13 @@ class UserController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->nip, 'nip'),
             ],
-            'role' => 'required|in:superadmin,admin,user',
-            'password' => 'nullable|string|min:6|confirmed',
+            'role' => ['required', 'in:superadmin,admin,user'],
+            'password' => ['nullable', 'string', 'min:6', 'confirmed'],
         ], [
+            'nip.required' => 'NIP wajib diisi.',
             'nip.unique' => 'NIP ini sudah terdaftar di sistem.',
+            'nip.max' => 'NIP maksimal 20 karakter.',
+            'email.required' => 'Email wajib diisi.',
             'email.unique' => 'Email ini sudah digunakan.',
             'password.min' => 'Password minimal harus 6 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
@@ -118,14 +126,14 @@ class UserController extends Controller
         DB::beginTransaction();
         try {
             $updateData = [
-                'nip'   => $request->nip,
-                'name'  => $request->name,
-                'email' => $request->email,
-                'role'  => $request->role,
+                'nip' => trim($validated['nip']),
+                'name' => $validated['name'],
+                'email' => strtolower($validated['email']),
+                'role' => $validated['role'],
             ];
 
             if ($request->filled('password')) {
-                $updateData['password'] = Hash::make($request->password);
+                $updateData['password'] = Hash::make($validated['password']);
             }
 
             $user->update($updateData);
