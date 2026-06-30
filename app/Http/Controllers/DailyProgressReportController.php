@@ -50,7 +50,14 @@ class DailyProgressReportController extends Controller
             ]);
         }
 
-        $selectedDate = old('tanggal_laporan', $firstMissingDate ?? min($today->toDateString(), $endDate->toDateString()));
+        if ($firstMissingDate) {
+            $selectedDate = old('tanggal_laporan', $firstMissingDate);
+        } elseif ($today->betweenIncluded($startDate, $endDate)) {
+            $selectedDate = old('tanggal_laporan', $today->toDateString());
+        } else {
+            $selectedDate = old('tanggal_laporan', $startDate->toDateString());
+        }
+
         $todayReport = $reportsByDate->get(now()->toDateString());
         $missingCount = $calendarDays->where('status', 'belum_lapor')->count();
 
