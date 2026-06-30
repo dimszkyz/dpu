@@ -37,11 +37,13 @@
 
             if (!isDeleteForm || form.dataset.swalDeleteBound === '1') return;
             form.dataset.swalDeleteBound = '1';
+            form.onsubmit = null;
 
             form.addEventListener('submit', function (event) {
                 if (form.dataset.swalConfirmed === '1') return;
 
                 event.preventDefault();
+                event.stopImmediatePropagation();
 
                 Swal.fire({
                     icon: 'warning',
@@ -58,7 +60,7 @@
                         form.submit();
                     }
                 });
-            });
+            }, true);
         });
     });
 </script>
