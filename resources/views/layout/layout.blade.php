@@ -13,23 +13,17 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
     </style>
 </head>
 
 <body class="bg-slate-50 flex flex-col min-h-screen antialiased">
-
     <header class="bg-white text-slate-800 border-b border-slate-200 sticky top-0 z-50 shadow-sm flex-shrink-0 h-20 flex items-center">
         <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between">
-
                 <div class="flex items-center space-x-3">
                     <div class="bg-slate-900 p-2 rounded-xl shadow-sm shadow-slate-900/10 hidden sm:block">
-                        <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
+                        <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
                     <div class="flex flex-col">
                         <span class="text-xl font-black tracking-wider text-slate-900">POINT<span class="text-blue-600">IFY</span></span>
@@ -38,53 +32,26 @@
                 </div>
 
                 <nav class="hidden md:flex items-center space-x-1">
-                    <a href="{{ route('dashboard') }}"
-                        class="px-4 py-2.5 text-xs font-bold tracking-wide rounded-xl transition-all duration-200 {{ request()->routeIs('dashboard') ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600' }}">
-                        DASHBOARD
-                    </a>
-                    <a href="{{ route('penugasan.index') }}"
-                        class="px-4 py-2.5 text-xs font-bold tracking-wide rounded-xl transition-all duration-200 {{ request()->routeIs('penugasan.*') ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600' }}">
-                        PENUGASAN SAYA
-                    </a>
-                    <a href="{{ route('laporan.index') }}"
-                        class="px-4 py-2.5 text-xs font-bold tracking-wide rounded-xl transition-all duration-200 {{ request()->routeIs('laporan.*') ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600' }}">
-                        LAPORAN
-                    </a>
+                    <a href="{{ route('dashboard') }}" class="px-4 py-2.5 text-xs font-bold tracking-wide rounded-xl transition-all duration-200 {{ request()->routeIs('dashboard') ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600' }}">DASHBOARD</a>
+                    <a href="{{ route('penugasan.index') }}" class="px-4 py-2.5 text-xs font-bold tracking-wide rounded-xl transition-all duration-200 {{ request()->routeIs('penugasan.*') ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600' }}">PENUGASAN SAYA</a>
+                    <a href="{{ route('laporan.index') }}" class="px-4 py-2.5 text-xs font-bold tracking-wide rounded-xl transition-all duration-200 {{ request()->routeIs('laporan.*') ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600' }}">LAPORAN</a>
                 </nav>
 
                 <div class="flex items-center space-x-3">
                     <div class="hidden sm:flex flex-col items-end text-right mr-1">
                         <span class="text-xs font-bold text-slate-800">{{ Auth::user()->name }}</span>
-                        <span class="text-[9px] font-extrabold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wider mt-0.5">
-                            {{ Auth::user()->role }}
-                        </span>
+                        <span class="text-[9px] font-extrabold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wider mt-0.5">{{ Auth::user()->role }}</span>
                     </div>
 
                     @if(Auth::user()->role === 'admin' || Auth::user()->role === 'superadmin')
-                        <a href="{{ route('admin.dashboard') }}"
-                            class="flex items-center px-4 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 hover:border-blue-500 hover:text-blue-600 rounded-xl transition-all duration-200 shadow-sm uppercase tracking-wide"
-                            title="Masuk ke Panel Kontrol Admin">
-                            <svg class="w-4 h-4 mr-2 text-slate-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            ADMIN PANEL
-                        </a>
+                        <a href="{{ route('admin.dashboard') }}" class="flex items-center px-4 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 hover:border-blue-500 hover:text-blue-600 rounded-xl transition-all duration-200 shadow-sm uppercase tracking-wide" title="Masuk ke Panel Kontrol Admin">ADMIN PANEL</a>
                     @endif
 
                     <form action="{{ route('logout') }}" method="POST" class="inline">
                         @csrf
-                        <button type="submit"
-                            class="flex items-center px-4 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-900 hover:text-white border border-slate-200 rounded-xl transition-all duration-200 uppercase tracking-wide"
-                            title="Keluar dari Sistem">
-                            <svg class="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                            LOGOUT
-                        </button>
+                        <button type="submit" class="flex items-center px-4 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-900 hover:text-white border border-slate-200 rounded-xl transition-all duration-200 uppercase tracking-wide" title="Keluar dari Sistem">LOGOUT</button>
                     </form>
                 </div>
-
             </div>
         </div>
     </header>
@@ -119,10 +86,7 @@
 
                 try {
                     const response = await fetch(endpoint, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                         credentials: 'same-origin'
                     });
 
@@ -142,19 +106,13 @@
 
                     if ('Notification' in window) {
                         if (Notification.permission === 'granted') {
-                            new Notification('POINTIFY - Laporan Harian', {
-                                body: message,
-                            });
+                            new Notification('POINTIFY - Laporan Harian', { body: message });
                         } else if (Notification.permission !== 'denied') {
                             Notification.requestPermission().then(function (permission) {
-                                if (permission === 'granted') {
-                                    new Notification('POINTIFY - Laporan Harian', { body: message });
-                                }
+                                if (permission === 'granted') new Notification('POINTIFY - Laporan Harian', { body: message });
                             });
                         }
                     }
-
-                    console.info('[POINTIFY]', message);
                 } catch (error) {
                     console.warn('[POINTIFY] Gagal cek reminder laporan harian.', error);
                 }
@@ -167,5 +125,6 @@
         })();
     </script>
 
+    @include('partials.sweet-alert')
 </body>
 </html>
