@@ -9,6 +9,7 @@ use App\Http\Controllers\PenugasanController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DailyProgressReportController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -31,7 +32,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'indexUser'])->name('dashboard');
 
     Route::get('/penugasan', [PenugasanController::class, 'indexUser'])->name('penugasan.index');
-    Route::get('/penugasan/{id}', [PenugasanController::class, 'show'])->name('penugasan.show');
+    Route::get('/penugasan/{id}', [DailyProgressReportController::class, 'show'])->name('penugasan.show');
+
+    Route::post('/penugasan/{id_penugasan}/laporan-harian', [DailyProgressReportController::class, 'store'])->name('daily-progress.store');
+    Route::get('/laporan-harian/pending-summary', [DailyProgressReportController::class, 'pendingSummary'])->name('daily-progress.pending-summary');
 
     Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/buat/{id_penugasan}', [LaporanController::class, 'create'])->name('laporan.create');
