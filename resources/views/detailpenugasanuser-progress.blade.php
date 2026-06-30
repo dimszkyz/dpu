@@ -15,6 +15,12 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div class="p-4 bg-red-50 border border-red-100 rounded-2xl text-sm font-semibold text-red-700">
+            {{ session('error') }}
+        </div>
+    @endif
+
     @if ($errors->any())
         <div class="p-4 bg-red-50 border border-red-100 rounded-2xl text-sm font-semibold text-red-700">
             <div class="font-bold mb-1">Laporan harian belum bisa disimpan:</div>
@@ -50,11 +56,11 @@
 
             <div class="shrink-0 flex flex-col gap-2 items-start md:items-end">
                 @if($status === 'disetujui')
-                    <span class="px-4 py-2 text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl uppercase tracking-wider">VALID / SELESAI</span>
+                    <span class="px-4 py-2 text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl uppercase tracking-wider">LAPORAN AKHIR DISETUJUI</span>
                 @elseif($status === 'revisi')
-                    <span class="px-4 py-2 text-xs font-black text-amber-700 bg-amber-50 border border-amber-100 rounded-xl uppercase tracking-wider">PERLU REVISI</span>
+                    <span class="px-4 py-2 text-xs font-black text-amber-700 bg-amber-50 border border-amber-100 rounded-xl uppercase tracking-wider">LAPORAN AKHIR REVISI</span>
                 @elseif($status === 'diajukan')
-                    <span class="px-4 py-2 text-xs font-black text-blue-700 bg-blue-50 border border-blue-100 rounded-xl uppercase tracking-wider">SEDANG DITINJAU</span>
+                    <span class="px-4 py-2 text-xs font-black text-blue-700 bg-blue-50 border border-blue-100 rounded-xl uppercase tracking-wider">LAPORAN AKHIR DITINJAU</span>
                 @else
                     <span class="px-4 py-2 text-xs font-black text-slate-600 bg-slate-50 border border-slate-200 rounded-xl uppercase tracking-wider">SEDANG BERJALAN</span>
                 @endif
@@ -123,6 +129,11 @@
                             @if($report->rencana_lanjut)
                                 <p class="text-[11px] font-semibold text-blue-700 mt-1">Rencana lanjut: {{ $report->rencana_lanjut }}</p>
                             @endif
+                            @if($report->file_path)
+                                <a href="{{ asset('storage/' . $report->file_path) }}" target="_blank" class="inline-flex mt-3 text-[10px] font-black text-blue-700 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg uppercase tracking-wider">
+                                    Lihat Lampiran: {{ $report->file_name ?? 'Berkas' }}
+                                </a>
+                            @endif
                         </div>
                     @empty
                         <p class="text-xs text-slate-400 italic text-center py-6">Belum ada laporan harian yang dibuat.</p>
@@ -133,6 +144,43 @@
 
         <div class="space-y-6">
             <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider">Aksi Laporan</h3>
+
+                <a href="#form-laporan-harian" class="w-full inline-flex justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-blue-500/10">
+                    Buat Laporan Harian
+                </a>
+
+                @if($isFinalReportAllowed && !$isDeadlinePassed)
+                    <a href="{{ route('laporan.create', $penugasan->id) }}" class="w-full inline-flex justify-center px-4 py-3 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-slate-900/10">
+                        Buat Laporan Akhir
+                    </a>
+                @elseif($isFinalReportAllowed && $isDeadlinePassed)
+                    <div class="p-4 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-700">
+                        Laporan harian sudah lengkap, tetapi batas waktu laporan akhir sudah lewat. Ajukan perpanjangan waktu untuk membuka kembali akses laporan akhir.
+                    </div>
+                @else
+                    <div class="p-4 rounded-xl bg-amber-50 border border-amber-100 text-xs font-semibold text-amber-700">
+                        Laporan akhir baru bisa dibuat setelah semua laporan harian dalam periode tugas lengkap.
+                    </div>
+                @endif
+
+                @if($isDeadlinePassed && $status === 'belum_lapor')
+                    <form action="{{ route('laporan.ajukanPerpanjangan', $penugasan->id) }}" method="POST" class="space-y-3">
+                        @csrf
+                        <textarea name="alasan_keterlambatan" rows="4" required class="w-full px-4 py-3 rounded-xl border border-red-200 bg-red-50 text-xs font-medium text-slate-800 focus:bg-white focus:border-red-500 outline-none resize-none" placeholder="Jelaskan alasan membutuhkan perpanjangan waktu..."></textarea>
+                        <button type="submit" class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider">
+                            Ajukan Perpanjangan Waktu
+                        </button>
+                    </form>
+                    @if($extensionRequest && $extensionRequest->status_keterlambatan === 'mengajukan')
+                        <div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-[11px] font-semibold text-amber-700">
+                            Permohonan perpanjangan sudah dikirim dan menunggu keputusan admin.
+                        </div>
+                    @endif
+                @endif
+            </div>
+
+            <div id="form-laporan-harian" class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
                 <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider">Buat Laporan Harian</h3>
 
                 @if($missingCount > 0)
@@ -145,7 +193,7 @@
                     </div>
                 @endif
 
-                <form action="{{ route('daily-progress.store', $penugasan->id) }}" method="POST" class="space-y-4">
+                <form action="{{ route('daily-progress.store', $penugasan->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                     @csrf
                     <div>
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tanggal Laporan</label>
@@ -153,7 +201,7 @@
                     </div>
                     <div>
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Progres Hari Ini</label>
-                        <textarea name="progres" rows="5" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:bg-white focus:border-blue-600 outline-none resize-none" placeholder="Tulis progres pekerjaan yang dilakukan pada tanggal tersebut...">{{ old('progres') }}</textarea>
+                        <textarea name="progres" rows="5" required class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:bg-white focus:border-blue-600 outline-none resize-none" placeholder="Tulis progres pekerjaan pada tanggal tersebut...">{{ old('progres') }}</textarea>
                     </div>
                     <div>
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Kendala</label>
@@ -163,27 +211,13 @@
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Rencana Lanjut</label>
                         <textarea name="rencana_lanjut" rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:bg-white focus:border-blue-600 outline-none resize-none" placeholder="Opsional">{{ old('rencana_lanjut') }}</textarea>
                     </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Lampiran Harian</label>
+                        <input type="file" name="file_laporan_harian" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 focus:bg-white focus:border-blue-600 outline-none">
+                        <p class="text-[10px] text-slate-400 mt-1">Opsional. Maksimal 5MB.</p>
+                    </div>
                     <button type="submit" class="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-blue-500/10">Simpan Laporan Harian</button>
                 </form>
-            </div>
-
-            <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
-                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3">Rekan Tim Pelaksana</h3>
-                <div class="space-y-3">
-                    @forelse($penugasan->anggota as $anggota)
-                        <div class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors">
-                            <div class="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-700 font-extrabold text-[11px] shrink-0">
-                                {{ strtoupper(substr($anggota->user->name ?? '?', 0, 2)) }}
-                            </div>
-                            <div class="min-w-0">
-                                <p class="text-xs font-bold text-slate-800 truncate">{{ $anggota->user->name ?? 'Pegawai Tidak Dikenal' }}</p>
-                                <p class="text-[10px] font-mono text-slate-400 mt-0.5 uppercase tracking-wider">NIP. {{ $anggota->user->nip ?? '-' }}</p>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-xs text-slate-400 italic text-center py-4">Belum ada anggota tim terdaftar.</p>
-                    @endforelse
-                </div>
             </div>
         </div>
     </div>
