@@ -14,21 +14,16 @@
 
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
-            <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-md uppercase tracking-wider font-mono">
-                LAPORAN AKHIR #{{ $laporan->id }}
-            </span>
-            <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-2 leading-tight">
-                {{ $laporan->penugasan->tugas->nama_tugas ?? 'Laporan Akhir Penugasan' }}
-            </h1>
-            <p class="text-xs font-medium text-slate-400 mt-1">
-                Dikirim pada {{ \Carbon\Carbon::parse($laporan->created_at)->locale('id')->translatedFormat('d F Y, H:i') }} WIB
-            </p>
+            <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-md uppercase tracking-wider font-mono">LAPORAN AKHIR #{{ $laporan->id }}</span>
+            <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-2 leading-tight">{{ $laporan->penugasan->tugas->nama_tugas ?? 'Laporan Akhir Penugasan' }}</h1>
+            <p class="text-xs font-medium text-slate-400 mt-1">Dikirim pada {{ \Carbon\Carbon::parse($laporan->created_at)->locale('id')->translatedFormat('d F Y, H:i') }} WIB</p>
         </div>
 
-        <div class="shrink-0">
-            <span class="px-4 py-2 text-xs font-black rounded-xl uppercase tracking-wider border {{ $laporan->status === 'disetujui' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : ($laporan->status === 'revisi' ? 'text-amber-700 bg-amber-50 border-amber-100' : 'text-indigo-700 bg-indigo-50 border-indigo-100') }}">
-                {{ strtoupper($laporan->status) }}
-            </span>
+        <div class="shrink-0 flex flex-col gap-2 items-start md:items-end">
+            <span class="px-4 py-2 text-xs font-black rounded-xl uppercase tracking-wider border {{ $laporan->status === 'disetujui' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : ($laporan->status === 'revisi' ? 'text-amber-700 bg-amber-50 border-amber-100' : 'text-indigo-700 bg-indigo-50 border-indigo-100') }}">{{ strtoupper($laporan->status) }}</span>
+            @if(($extensionRequests ?? collect())->count() > 0)
+                <span class="px-3 py-1 text-[10px] font-black text-red-700 bg-red-50 border border-red-100 rounded-lg uppercase tracking-wider">Ada Permohonan Perpanjangan</span>
+            @endif
         </div>
     </div>
 
@@ -59,15 +54,53 @@
             </div>
 
             <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+                <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest">Daftar Laporan Harian Terkait</h3>
+                    <span class="px-3 py-1 rounded-xl bg-blue-50 border border-blue-100 text-[10px] font-black text-blue-700 uppercase tracking-wider">
+                        {{ ($dailyReports ?? collect())->count() }} Data
+                    </span>
+                </div>
+
+                <div class="space-y-3 max-h-[32rem] overflow-y-auto pr-1">
+                    @forelse(($dailyReports ?? collect()) as $daily)
+                        <div class="p-4 rounded-2xl border border-blue-100 bg-blue-50/40">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                <div>
+                                    <p class="text-xs font-black text-blue-800 uppercase tracking-wider">
+                                        {{ \Carbon\Carbon::parse($daily->tanggal_laporan)->locale('id')->translatedFormat('d F Y') }}
+                                    </p>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                                        {{ $daily->user->name ?? $daily->id_user }} / {{ $daily->id_user }}
+                                    </p>
+                                </div>
+                                @if($daily->file_path)
+                                    <a href="{{ asset('storage/' . $daily->file_path) }}" target="_blank" class="inline-flex px-3 py-1.5 bg-white border border-blue-100 text-blue-700 rounded-lg text-[10px] font-black uppercase tracking-wider">Buka Lampiran</a>
+                                @endif
+                            </div>
+                            <p class="text-xs font-medium text-slate-700 leading-relaxed whitespace-pre-line">{{ $daily->progres }}</p>
+                            @if($daily->kendala)
+                                <p class="text-[11px] font-semibold text-amber-700 mt-2">Kendala: {{ $daily->kendala }}</p>
+                            @endif
+                            @if($daily->rencana_lanjut)
+                                <p class="text-[11px] font-semibold text-indigo-700 mt-1">Rencana lanjut: {{ $daily->rencana_lanjut }}</p>
+                            @endif
+                        </div>
+                    @empty
+                        <p class="text-center py-6 text-slate-400 text-xs font-medium italic">Belum ada laporan harian untuk penugasan ini.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3">Chat Evaluasi & Permohonan Perpanjangan</h3>
 
                 @if(($extensionRequests ?? collect())->count() > 0)
                     <div class="space-y-3">
                         @foreach($extensionRequests as $requestItem)
                             <div class="bg-red-50 border border-red-100 rounded-2xl p-4">
-                                <div class="flex items-center justify-between gap-3 mb-2">
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
                                     <p class="text-xs font-black text-red-700 uppercase tracking-wider">Permohonan Perpanjangan</p>
-                                    <span class="text-[10px] font-black text-red-700 bg-white border border-red-100 px-2 py-1 rounded-lg uppercase">Menunggu Admin</span>
+                                    <a href="{{ route('admin.penugasan.show', $laporan->penugasan->id) }}" class="text-[10px] font-black text-red-700 bg-white border border-red-100 px-2 py-1 rounded-lg uppercase">Tinjau Deadline</a>
                                 </div>
                                 <p class="text-xs font-semibold text-slate-700 leading-relaxed">{{ $requestItem->alasan_keterlambatan }}</p>
                                 <p class="text-[10px] font-bold text-slate-400 mt-2 uppercase">Diajukan oleh: {{ $requestItem->user->name ?? $requestItem->id_user }}</p>
@@ -80,9 +113,7 @@
                     @forelse($laporan->chats ?? [] as $chat)
                         <div class="flex flex-col {{ $chat->is_from_admin_panel ? 'items-end' : 'items-start' }} gap-1 w-full">
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ $chat->is_from_admin_panel ? 'Admin' : 'Anggota' }} • {{ \Carbon\Carbon::parse($chat->created_at)->format('d M, H:i') }}</span>
-                            <div class="{{ $chat->is_from_admin_panel ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200/60' }} px-4 py-3 rounded-2xl text-xs font-medium max-w-[85%] leading-relaxed">
-                                {{ $chat->pesan }}
-                            </div>
+                            <div class="{{ $chat->is_from_admin_panel ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200/60' }} px-4 py-3 rounded-2xl text-xs font-medium max-w-[85%] leading-relaxed">{{ $chat->pesan }}</div>
                         </div>
                     @empty
                         <p class="text-center py-6 text-slate-400 text-xs font-medium">Belum ada chat evaluasi.</p>
