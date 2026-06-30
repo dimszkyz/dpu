@@ -21,19 +21,43 @@ class LaporanController extends Controller
         $isAdminRoute = $request->routeIs('admin.*') || $request->is('admin/*');
 
         if ($isAdminRoute && (Auth::user()->role === 'admin' || Auth::user()->role === 'superadmin')) {
+            $search = $request->search;
+
             $query = Laporan::with(['penugasan.tugas', 'penugasan.anggota.user']);
 
             if ($request->filled('search')) {
-                $search = $request->search;
                 $query->whereHas('penugasan.tugas', function ($q) use ($search) {
                     $q->where('nama_tugas', 'like', '%' . $search . '%')
                       ->orWhere('kodetugas', 'like', '%' . $search . '%');
-                });
+                })->orWhere('user_id', 'like', '%' . $search . '%');
             }
 
             $laporans = $query->orderBy('updated_at', 'desc')->paginate(10);
 
-            return view('admin.laporan', compact('laporans'));
+            $dailyReports = DailyProgressReport::with(['penugasan.tugas', 'user'])
+                ->when($request->filled('search'), function ($q) use ($search) {
+                    $q->whereHas('penugasan.tugas', function ($taskQuery) use ($search) {
+                        $taskQuery->where('nama_tugas', 'like', '%' . $search . '%')
+                            ->orWhere('kodetugas', 'like', '%' . $search . '%');
+                    })->orWhere('id_user', 'like', '%' . $search . '%');
+                })
+                ->orderBy('tanggal_laporan', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->limit(25)
+                ->get();
+
+            $extensionRequests = AnggotaPenugasan::with(['penugasan.tugas', 'user'])
+                ->where('status_keterlambatan', 'mengajukan')
+                ->when($request->filled('search'), function ($q) use ($search) {
+                    $q->whereHas('penugasan.tugas', function ($taskQuery) use ($search) {
+                        $taskQuery->where('nama_tugas', 'like', '%' . $search . '%')
+                            ->orWhere('kodetugas', 'like', '%' . $search . '%');
+                    })->orWhere('id_user', 'like', '%' . $search . '%');
+                })
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            return view('admin.laporan', compact('laporans', 'dailyReports', 'extensionRequests'));
         }
 
         $query = Laporan::with(['penugasan.tugas', 'penugasan.anggota.user']);
@@ -155,7 +179,12 @@ class LaporanController extends Controller
             ->where('status_keterlambatan', 'mengajukan')
             ->values();
 
-        return view('admin.detaillaporan', compact('laporan', 'extensionRequests'));
+        $dailyReports = DailyProgressReport::with('user')
+            ->where('id_penugasan', $laporan->id_penugasan)
+            ->orderBy('tanggal_laporan', 'desc')
+            ->get();
+
+        return view('admin.detaillaporan', compact('laporan', 'extensionRequests', 'dailyReports'));
     }
 
     public function updateStatus(Request $request, $id)
