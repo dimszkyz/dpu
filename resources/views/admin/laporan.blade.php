@@ -3,113 +3,202 @@
 @section('title', 'Manajemen Laporan')
 
 @section('content')
-<style>
-    @keyframes fadeInUp { 
-        from { opacity: 0; transform: translateY(20px); } 
-        to { opacity: 1; transform: translateY(0); } 
-    }
-    .hud-panel { opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    .delay-100 { animation-delay: 100ms; }
-    .delay-200 { animation-delay: 200ms; }
-</style>
-
-<div class="container mx-auto px-4 py-6 font-sans space-y-6">
-    
-    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-300 pb-4 hud-panel">
+<div class="max-w-7xl mx-auto space-y-6 animate-fade-in">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-                <svg class="w-7 h-7 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z"/>
-                </svg>
-                Manajemen Berkas Laporan Kerja
-            </h2>
-            <p class="text-xs text-gray-500 mt-1">Gunakan panel ini untuk mengaudit kelayakan laporan pengerjaan tugas dari anggota.</p>
+            <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Manajemen Laporan</h1>
+            <p class="text-xs font-medium text-slate-400 mt-1">
+                Pantau laporan akhir, laporan harian, dan permohonan perpanjangan waktu dari anggota penugasan.
+            </p>
+        </div>
+        <div class="grid grid-cols-3 gap-2 w-full md:w-auto">
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-center">
+                <p class="text-lg font-black text-slate-900">{{ method_exists($laporans, 'total') ? $laporans->total() : $laporans->count() }}</p>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Akhir</p>
+            </div>
+            <div class="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-center">
+                <p class="text-lg font-black text-blue-700">{{ ($dailyReports ?? collect())->count() }}</p>
+                <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest">Harian</p>
+            </div>
+            <div class="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-center">
+                <p class="text-lg font-black text-red-700">{{ ($extensionRequests ?? collect())->count() }}</p>
+                <p class="text-[9px] font-black text-red-500 uppercase tracking-widest">Perpanjangan</p>
+            </div>
         </div>
     </div>
 
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hud-panel delay-100">
-        <div class="p-4 border-b border-gray-100 bg-gray-50/50">
-            <form action="{{ route('admin.laporan.index') }}" method="GET" class="flex flex-col md:flex-row gap-3">
-                <div class="relative flex-1">
-                    <input type="text" name="search" value="{{ request('search') }}"
-                           placeholder="Cari berdasarkan nama tugas atau kode tugas..."
-                           class="w-full pl-10 pr-4 py-2 text-xs font-medium bg-white border border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                    </div>
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+        <form action="{{ route('admin.laporan.index') }}" method="GET" class="flex flex-col md:flex-row gap-3">
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama tugas, kode tugas, atau NIP user..." class="flex-1 px-4 py-3 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+            <button type="submit" class="px-5 py-3 bg-slate-900 hover:bg-black text-white text-xs font-black rounded-xl uppercase tracking-wider">Cari Data</button>
+        </form>
+    </div>
+
+    @if(($extensionRequests ?? collect())->count() > 0)
+        <div class="bg-red-50 border border-red-100 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-red-100 flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-sm font-black text-red-700 uppercase tracking-widest">Permohonan Perpanjangan Waktu</h2>
+                    <p class="text-xs font-semibold text-red-500 mt-1">Permohonan ini membutuhkan keputusan admin.</p>
                 </div>
-                <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl transition uppercase tracking-wider">
-                    Cari Data
-                </button>
-            </form>
+                <span class="px-3 py-1 rounded-xl bg-white border border-red-100 text-[10px] font-black text-red-700 uppercase tracking-wider">
+                    {{ $extensionRequests->count() }} Menunggu
+                </span>
+            </div>
+
+            <div class="divide-y divide-red-100">
+                @foreach($extensionRequests as $requestItem)
+                    <div class="p-5 bg-white/60 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div class="space-y-1">
+                            <p class="text-sm font-black text-slate-900">{{ $requestItem->penugasan->tugas->nama_tugas ?? 'Penugasan' }}</p>
+                            <p class="text-[10px] font-mono text-slate-400 uppercase">
+                                KODE: {{ $requestItem->penugasan->kodetugas ?? '-' }} • USER: {{ $requestItem->user->name ?? $requestItem->id_user }} / {{ $requestItem->id_user }}
+                            </p>
+                            <p class="text-xs font-semibold text-slate-700 leading-relaxed max-w-3xl mt-2">
+                                {{ $requestItem->alasan_keterlambatan ?: 'Tidak ada alasan tertulis.' }}
+                            </p>
+                        </div>
+                        <a href="{{ route('admin.penugasan.show', $requestItem->id_penugasan) }}" class="shrink-0 inline-flex justify-center px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider">
+                            Tinjau & Set Deadline
+                        </a>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">Daftar Laporan Harian</h2>
+                <p class="text-xs font-medium text-slate-400 mt-1">Menampilkan laporan harian terbaru dari seluruh penugasan.</p>
+            </div>
+            <span class="px-3 py-1 rounded-xl bg-blue-50 border border-blue-100 text-[10px] font-black text-blue-700 uppercase tracking-wider">
+                {{ ($dailyReports ?? collect())->count() }} Data
+            </span>
         </div>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-slate-50">
                     <tr>
-                        <th class="py-3 px-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">ID Laporan</th>
-                        <th class="py-3 px-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nama Tugas</th>
-                        <th class="py-3 px-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">NIP Pengirim</th>
-                        <th class="py-3 px-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Judul Laporan</th>
-                        <th class="py-3 px-4 text-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status Validasi</th>
-                        <th class="py-3 px-4 text-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">Aksi</th>
+                        <th class="py-3 px-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Tanggal</th>
+                        <th class="py-3 px-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Tugas</th>
+                        <th class="py-3 px-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">User</th>
+                        <th class="py-3 px-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Progres</th>
+                        <th class="py-3 px-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">Lampiran</th>
+                        <th class="py-3 px-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-100">
-                    @forelse($laporans as $l)
+                <tbody class="bg-white divide-y divide-slate-100">
+                    @forelse(($dailyReports ?? collect()) as $daily)
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="py-4 px-4 text-xs font-semibold text-gray-500">
-                                #LPR-{{ $l->id }}
+                            <td class="py-4 px-4 text-xs font-black text-slate-700 whitespace-nowrap">
+                                {{ \Carbon\Carbon::parse($daily->tanggal_laporan)->locale('id')->translatedFormat('d M Y') }}
                             </td>
                             <td class="py-4 px-4">
-                                <span class="text-xs font-bold text-gray-800 block">{{ $l->penugasan->tugas->nama_tugas ?? '-' }}</span>
-                                <span class="text-[10px] font-mono text-gray-400 block mt-0.5">KODE: {{ $l->penugasan->kodetugas ?? '-' }}</span>
+                                <span class="text-xs font-bold text-slate-800 block">{{ $daily->penugasan->tugas->nama_tugas ?? '-' }}</span>
+                                <span class="text-[10px] font-mono text-slate-400 block mt-0.5">KODE: {{ $daily->penugasan->kodetugas ?? '-' }}</span>
                             </td>
-                            <td class="py-4 px-4 text-xs font-medium text-gray-600">
-                                {{ $l->user_id }}
+                            <td class="py-4 px-4 text-xs font-semibold text-slate-600">
+                                {{ $daily->user->name ?? $daily->id_user }}
+                                <span class="block text-[10px] font-mono text-slate-400">{{ $daily->id_user }}</span>
                             </td>
-                            <td class="py-4 px-4">
-                                <span class="text-xs font-bold text-gray-700 block">{{ $l->judul }}</span>
-                                <span class="text-[10px] text-gray-400 block mt-0.5 truncate max-w-xs">{{ Str::limit($l->deskripsi, 50) }}</span>
+                            <td class="py-4 px-4 text-xs text-slate-600 max-w-sm">
+                                {{ \Illuminate\Support\Str::limit($daily->progres, 90) }}
                             </td>
                             <td class="py-4 px-4 text-center">
-                                @if($l->status === 'disetujui')
-                                    <span class="px-2.5 py-1 text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md uppercase tracking-wider">DISETUJUI</span>
-                                @elseif($l->status === 'revisi')
-                                    <span class="px-2.5 py-1 text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-100 rounded-md uppercase tracking-wider">REVISI</span>
-                                @elseif($l->status === 'menunggu')
-                                    <span class="px-2.5 py-1 text-[10px] font-black text-blue-700 bg-blue-50 border border-blue-100 rounded-md uppercase tracking-wider">MENUNGGU</span>
+                                @if($daily->file_path)
+                                    <a href="{{ asset('storage/' . $daily->file_path) }}" target="_blank" class="inline-flex px-3 py-1.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-lg text-[10px] font-black uppercase tracking-wider">Buka</a>
                                 @else
-                                    <span class="px-2.5 py-1 text-[10px] font-black text-gray-600 bg-gray-50 border border-gray-200 rounded-md uppercase tracking-wider">{{ strtoupper($l->status) }}</span>
+                                    <span class="text-[10px] font-bold text-slate-300 uppercase">Tidak Ada</span>
                                 @endif
                             </td>
                             <td class="py-4 px-4 text-center">
-                                <a href="{{ route('admin.laporan.show', $l->id) }}"
-                                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg shadow-sm transition uppercase tracking-wider transform hover:scale-105">
-                                    REVIEW
-                                </a>
+                                <a href="{{ route('admin.penugasan.show', $daily->id_penugasan) }}" class="inline-flex px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg text-[10px] font-black uppercase tracking-wider">Detail</a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="p-12 text-center text-gray-400 font-medium italic text-xs">
-                                Belum ada berkas data laporan kemajuan proyek masuk yang tersedia saat ini.
-                            </td>
+                            <td colspan="6" class="p-10 text-center text-slate-400 text-xs font-medium italic">Belum ada laporan harian yang masuk.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-        
-        @if(method_exists($laporans, 'links'))
-            <div class="bg-gray-50 px-4 py-3 border-t border-gray-100">
-                {{ $laporans->links() }}
-            </div>
-        @endif
     </div>
 
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">Daftar Laporan Akhir</h2>
+                <p class="text-xs font-medium text-slate-400 mt-1">Laporan akhir yang sudah dikirim user untuk review admin.</p>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="py-3 px-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">ID</th>
+                        <th class="py-3 px-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Nama Tugas</th>
+                        <th class="py-3 px-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">NIP Pengirim</th>
+                        <th class="py-3 px-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Ringkasan</th>
+                        <th class="py-3 px-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">Status</th>
+                        <th class="py-3 px-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">Perpanjangan</th>
+                        <th class="py-3 px-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-100">
+                    @forelse($laporans as $l)
+                        @php
+                            $hasExtension = ($l->penugasan->anggota ?? collect())->where('status_keterlambatan', 'mengajukan')->count() > 0;
+                        @endphp
+                        <tr class="hover:bg-slate-50 transition-colors {{ $hasExtension ? 'bg-red-50/40' : '' }}">
+                            <td class="py-4 px-4 text-xs font-semibold text-slate-500">#LPR-{{ $l->id }}</td>
+                            <td class="py-4 px-4">
+                                <span class="text-xs font-bold text-slate-800 block">{{ $l->penugasan->tugas->nama_tugas ?? '-' }}</span>
+                                <span class="text-[10px] font-mono text-slate-400 block mt-0.5">KODE: {{ $l->penugasan->kodetugas ?? '-' }}</span>
+                            </td>
+                            <td class="py-4 px-4 text-xs font-medium text-slate-600">{{ $l->user_id }}</td>
+                            <td class="py-4 px-4 text-xs text-slate-500 max-w-sm">{{ \Illuminate\Support\Str::limit($l->teks_laporan ?? '-', 80) }}</td>
+                            <td class="py-4 px-4 text-center">
+                                @if($l->status === 'disetujui')
+                                    <span class="px-2.5 py-1 text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md uppercase tracking-wider">DISETUJUI</span>
+                                @elseif($l->status === 'revisi')
+                                    <span class="px-2.5 py-1 text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-100 rounded-md uppercase tracking-wider">REVISI</span>
+                                @else
+                                    <span class="px-2.5 py-1 text-[10px] font-black text-blue-700 bg-blue-50 border border-blue-100 rounded-md uppercase tracking-wider">{{ strtoupper($l->status) }}</span>
+                                @endif
+                            </td>
+                            <td class="py-4 px-4 text-center">
+                                @if($hasExtension)
+                                    <span class="px-2.5 py-1 text-[10px] font-black text-red-700 bg-red-50 border border-red-100 rounded-md uppercase tracking-wider">Ada</span>
+                                @else
+                                    <span class="text-[10px] font-bold text-slate-300 uppercase">-</span>
+                                @endif
+                            </td>
+                            <td class="py-4 px-4 text-center">
+                                <a href="{{ route('admin.laporan.show', $l->id) }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black rounded-lg shadow-sm transition uppercase tracking-wider">Review</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="p-12 text-center text-slate-400 font-medium italic text-xs">Belum ada laporan akhir yang masuk.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if(method_exists($laporans, 'links'))
+            <div class="bg-slate-50 px-4 py-3 border-t border-slate-100">{{ $laporans->links() }}</div>
+        @endif
+    </div>
 </div>
+
+<style>
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+</style>
 @endsection
