@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DailyProgressReport;
 use App\Models\Laporan;
 use App\Models\LaporanFile;
 use App\Models\LaporanRevisiChat;
 use App\Models\Penugasan;
 use App\Models\AnggotaPenugasan;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class LaporanController extends Controller
 {
@@ -55,16 +57,23 @@ class LaporanController extends Controller
 
     public function create($id_penugasan)
     {
-        $penugasan = Penugasan::with('tugas')->findOrFail($id_penugasan);
-        
+        $penugasan = Penugasan::with(['tugas', 'dailyProgressReports' => function ($query) {
+            $query->where('id_user', Auth::user()->nip);
+        }])->findOrFail($id_penugasan);
+
         $anggota = AnggotaPenugasan::where('id_penugasan', $id_penugasan)
             ->where('id_user', Auth::user()->nip)
             ->firstOrFail();
 
-        $batas_waktu = $anggota->custom_deadline ?? $penugasan->batas_waktu_lapor ?? $penugasan->batas_lapor ?? ($penugasan->tugas->batas_waktu ?? now());
-        $is_waktu_habis = now()->greaterThan($batas_waktu);
+        if (!$this->dailyReportsComplete($penugasan, Auth::user()->nip)) {
+            return redirect()->route('penugasan.show', $penugasan->id)
+                ->with('error', 'Laporan akhir belum bisa dibuat. Lengkapi semua laporan harian terlebih dahulu.');
+        }
 
-        return view('buatlaporan', compact('penugasan', 'anggota', 'is_waktu_habis'));
+        $batas_waktu = $anggota->custom_deadline ?? $penugasan->batas_waktu_lapor ?? $penugasan->batas_lapor ?? ($penugasan->tugas->tanggal_selesai ?? now());
+        $is_waktu_habis = now()->greaterThan(Carbon::parse($batas_waktu));
+
+        return view('buatlaporan', compact('penugasan', 'anggota', 'is_waktu_habis', 'batas_waktu'));
     }
 
     public function store(Request $request)
@@ -76,14 +85,31 @@ class LaporanController extends Controller
             'file_laporan.*' => 'file|max:5120'
         ]);
 
+        $penugasan = Penugasan::with(['tugas', 'dailyProgressReports' => function ($query) {
+            $query->where('id_user', Auth::user()->nip);
+        }])->findOrFail($request->id_penugasan);
+
+        if (!$this->dailyReportsComplete($penugasan, Auth::user()->nip)) {
+            return redirect()->route('penugasan.show', $penugasan->id)
+                ->with('error', 'Laporan akhir ditolak sistem karena laporan harian belum lengkap.');
+        }
+
+        $deadline = Carbon::parse($penugasan->batas_waktu_lapor);
+        if (now()->greaterThan($deadline)) {
+            return redirect()->route('penugasan.show', $penugasan->id)
+                ->with('error', 'Batas waktu laporan akhir sudah lewat. Ajukan perpanjangan waktu terlebih dahulu.');
+        }
+
         DB::beginTransaction();
         try {
-            $laporan = Laporan::create([
-                'id_penugasan' => $request->id_penugasan,
-                'user_id' => Auth::user()->nip,
-                'teks_laporan' => $request->teks_laporan,
-                'status' => 'diajukan'
-            ]);
+            $laporan = Laporan::updateOrCreate(
+                ['id_penugasan' => $request->id_penugasan],
+                [
+                    'user_id' => Auth::user()->nip,
+                    'teks_laporan' => $request->teks_laporan,
+                    'status' => 'diajukan'
+                ]
+            );
 
             $uploadedFiles = [];
             if ($request->hasFile('files')) {
@@ -102,7 +128,7 @@ class LaporanController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('laporan.index')->with('success', 'Laporan berhasil dikirim');
+            return redirect()->route('laporan.index')->with('success', 'Laporan akhir berhasil dikirim');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
@@ -118,14 +144,18 @@ class LaporanController extends Controller
     public function showAdmin($id)
     {
         $laporan = Laporan::with([
-            'penugasan.tugas', 
+            'penugasan.tugas',
             'penugasan.anggota.user',
             'penugasan.admin',
             'files',
             'chats.user'
         ])->findOrFail($id);
 
-        return view('admin.detaillaporan', compact('laporan'));
+        $extensionRequests = $laporan->penugasan->anggota
+            ->where('status_keterlambatan', 'mengajukan')
+            ->values();
+
+        return view('admin.detaillaporan', compact('laporan', 'extensionRequests'));
     }
 
     public function updateStatus(Request $request, $id)
@@ -167,7 +197,26 @@ class LaporanController extends Controller
             'alasan_keterlambatan' => $request->alasan_keterlambatan,
         ]);
 
-        return redirect()->back()->with('success', 'Permohonan buka laporan berhasil diajukan.');
+        return redirect()->back()->with('success', 'Permohonan perpanjangan waktu berhasil diajukan dan akan tampil sebagai notifikasi admin.');
+    }
+
+    public function pendingExtensionSummary()
+    {
+        $requests = AnggotaPenugasan::with(['penugasan.tugas', 'user'])
+            ->where('status_keterlambatan', 'mengajukan')
+            ->get();
+
+        return response()->json([
+            'count' => $requests->count(),
+            'items' => $requests->map(function ($request) {
+                return [
+                    'id_penugasan' => $request->id_penugasan,
+                    'nama_tugas' => $request->penugasan->tugas->nama_tugas ?? 'Penugasan',
+                    'user' => $request->user->name ?? $request->id_user,
+                    'url' => route('admin.penugasan.show', $request->id_penugasan),
+                ];
+            }),
+        ]);
     }
 
     public function storeChat(Request $request)
@@ -177,7 +226,7 @@ class LaporanController extends Controller
             'pesan' => 'required|string'
         ]);
 
-        $isFromAdminPanel = $request->routeIs('admin.*') || $request->is('admin/*') ? true : false; 
+        $isFromAdminPanel = $request->routeIs('admin.*') || $request->is('admin/*') ? true : false;
 
         LaporanRevisiChat::create([
             'id_laporan' => $request->id_laporan,
@@ -233,5 +282,24 @@ class LaporanController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
+    }
+
+    private function dailyReportsComplete(Penugasan $penugasan, string $userId): bool
+    {
+        $startDate = Carbon::parse($penugasan->tugas->tanggal_mulai ?? $penugasan->created_at)->startOfDay();
+        $endDate = Carbon::parse($penugasan->tugas->tanggal_selesai ?? $penugasan->batas_waktu_lapor)->startOfDay();
+        $reportedDates = DailyProgressReport::where('id_penugasan', $penugasan->id)
+            ->where('id_user', $userId)
+            ->pluck('tanggal_laporan')
+            ->map(fn ($date) => Carbon::parse($date)->toDateString())
+            ->toArray();
+
+        foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+            if (!in_array($date->toDateString(), $reportedDates, true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
