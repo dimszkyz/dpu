@@ -38,11 +38,8 @@
 
         <nav class="flex-1 px-4 py-6 space-y-1 custom-scrollbar overflow-y-auto">
             <span class="px-3 block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Utama</span>
-
             <a href="{{ route('admin.dashboard') }}" class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('admin.dashboard') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/10 font-semibold' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100' }}">Dashboard</a>
-
             <div class="pt-4 pb-2"><span class="px-3 block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Data & Kontrol</span></div>
-
             <a href="{{ route('admin.user.index') }}" class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('admin.user.*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/10 font-semibold' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100' }}">Manajemen User</a>
             <a href="{{ route('admin.tugas.index') }}" class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('admin.tugas.*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/10 font-semibold' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100' }}">Manajemen Tugas</a>
             <a href="{{ route('admin.penugasan.index') }}" class="flex items-center px-4 py-3 rounded-xl transition-all duration-200 group {{ request()->routeIs('admin.penugasan.*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/10 font-semibold' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100' }}">Manajemen Penugasan</a>
@@ -134,5 +131,7 @@
             });
         })();
     </script>
+
+    @include('partials.sweet-alert')
 </body>
 </html>
