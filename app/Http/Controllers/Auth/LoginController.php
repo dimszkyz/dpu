@@ -13,7 +13,7 @@ class LoginController extends Controller
      */
     public function showLoginForm()
     {
-        return view('auth.login-glass');
+        return view('auth.login-clean');
     }
 
     /**
