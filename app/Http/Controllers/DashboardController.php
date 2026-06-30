@@ -27,7 +27,8 @@ class DashboardController extends Controller
         $totalLaporanHarian = DailyProgressReport::count();
         $permohonanPerpanjangan = AnggotaPenugasan::where('status_keterlambatan', 'mengajukan')->count();
 
-        $kodeTugasDitugaskan = Penugasan::query()->pluck('kodetugas')->unique()->values();
+        $kodeTugasDitugaskan = Penugasan::pluck('kodetugas')->unique()->values();
+
         $kodeTugasSelesai = Penugasan::whereHas('laporan', function ($query) {
                 $query->where('status', 'disetujui');
             })
@@ -43,29 +44,34 @@ class DashboardController extends Controller
             ->unique()
             ->values();
 
+        $kodeTugasTerlambat = Penugasan::whereDoesntHave('laporan')
+            ->whereNotIn('kodetugas', $kodeTugasSelesai)
+            ->whereNotIn('kodetugas', $kodeTugasProses)
+            ->where('batas_waktu_lapor', '<', now())
+            ->pluck('kodetugas')
+            ->unique()
+            ->values();
+
         $kodeTugasBaruDitugaskan = Penugasan::whereDoesntHave('laporan')
             ->whereNotIn('kodetugas', $kodeTugasSelesai)
             ->whereNotIn('kodetugas', $kodeTugasProses)
+            ->whereNotIn('kodetugas', $kodeTugasTerlambat)
+            ->where('batas_waktu_lapor', '>=', now())
             ->pluck('kodetugas')
             ->unique()
             ->values();
 
         $totalSelesai = $kodeTugasSelesai->count();
         $totalProses = $kodeTugasProses->count();
+        $totalTerlambat = $kodeTugasTerlambat->count();
         $totalDitugaskan = $kodeTugasBaruDitugaskan->count();
         $belumDitugaskan = Tugas::whereNotIn('kodetugas', $kodeTugasDitugaskan)->count();
-        $tugasAktif = $totalProses + $totalDitugaskan;
-
-        $totalTerlambat = Penugasan::whereDoesntHave('laporan', function ($query) {
-                $query->where('status', 'disetujui');
-            })
-            ->where('batas_waktu_lapor', '<', now())
-            ->distinct('kodetugas')
-            ->count('kodetugas');
+        $tugasAktif = $totalProses + $totalDitugaskan + $totalTerlambat;
 
         $statusPenugasan = [
             'Selesai' => $totalSelesai,
             'Proses Review' => $totalProses,
+            'Terlambat' => $totalTerlambat,
             'Ditugaskan' => $totalDitugaskan,
             'Belum Ditugaskan' => $belumDitugaskan,
         ];
@@ -83,7 +89,7 @@ class DashboardController extends Controller
 
         $timelineTugas = Penugasan::with(['tugas', 'laporan'])
             ->orderBy('batas_waktu_lapor', 'asc')
-            ->take(8)
+            ->take(12)
             ->get();
 
         $laporanBaru = Laporan::with(['penugasan.tugas', 'penugasan.anggota.user'])
