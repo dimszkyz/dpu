@@ -18,6 +18,8 @@ class DailyProgressReport extends Model
         'progres',
         'kendala',
         'rencana_lanjut',
+        'file_path',
+        'file_name',
     ];
 
     protected $casts = [
