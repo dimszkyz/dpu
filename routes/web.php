@@ -48,6 +48,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:admin,superadmin'])->prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/notifikasi/perpanjangan', [LaporanController::class, 'pendingExtensionSummary'])->name('extension.pending-summary');
 
         Route::prefix('pengguna')->name('user.')->group(function () {
             Route::get('/', [UserController::class, 'index'])->name('index');
@@ -82,6 +83,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{id}', [PenugasanController::class, 'showAdmin'])->name('show');
             Route::get('/{id}/edit', [PenugasanController::class, 'edit'])->name('edit');
             Route::put('/{id}', [PenugasanController::class, 'update'])->name('update');
+            Route::put('/{id}/deadline', [PenugasanController::class, 'updateDeadline'])->name('updateDeadline');
             Route::delete('/{id}', [PenugasanController::class, 'destroy'])->name('destroy');
         });
 
